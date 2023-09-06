@@ -1,39 +1,53 @@
-const express = require('express');
+const http = require('http');
+const app = require('./app');
 const mongoose = require('mongoose');
-const bodyParser = require('body-parser')
-const path = require('path');
-const cors = require('cors')
 require('dotenv').config();
 
-const authRoutes = require('./routes/auth');
-const sauceRoutes = require('./routes/sauce')
+const normalizePort = val => {
+    const port = parseInt(val, 10);
 
-const app = express();
-
-console.log(process.env.MONGO_URI)
-
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
-
-app.use(express.json())
-
-const port = process.env.PORT || 3000
-
-let dbURI = "mongodb+srv://admin:JJHYz1QEzm7EcMtK@autogpt.65oepno.mongodb.net/"
+    if (isNaN(port)) {
+        return val;
+    }
+    if (port >= 0) {
+        return port;
+    }
+    return false;
+};
+const port = normalizePort(process.env.PORT || 3000);
+const dbURI = process.env.MONGO_URI;
 
 mongoose.connect(dbURI, { useNewUrlParser: true, useUnifiedTopology: true })
-  .then(result => {
-    console.log('Connected to MongoDB!')
-    app.listen(process.env.PORT || port)
-    console.log('Listening on port ' + port + '...')
-  })
-  .catch(err => console.log(err));
+    .then(() => {
+        console.log('Connected to MongoDB!');
+        console.log('Listening on port ' + port + '...');
+    })
+    .catch(err => console.log(err));
 
-app.get('/', (req, res) => {
-  res.send('hello')
-})
+const errorHandler = error => {
+    if (error.syscall !== 'listen') {
+        throw error;
+    }
+    const bind = 'port: ' + port;
+    switch (error.code) {
+        case 'EACCES':
+            console.error(bind + ' requires elevated privileges.');
+            process.exit(1);
+            break;
+        case 'EADDRINUSE':
+            console.error(bind + ' is already in use.');
+            process.exit(1);
+            break;
+        default:
+            throw error;
+    }
+};
 
+const server = http.createServer(app);
 
-app.use('/api/auth', authRoutes)
-app.use('/api/sauces', sauceRoutes)
- 
+server.on('error', errorHandler);
+server.on('listening', () => {
+    console.log('Listening on port: ' + port);
+});
+
+server.listen(port);
