@@ -1,31 +1,60 @@
-const Sauce = require('../models/Sauce.model');
-const fs = require('fs');
+const Sauce = require('../models/Sauce.model');  // Importe le modèle Mongoose pour les sauces
+const fs = require('fs');  // Importe le module de système de fichiers Node.js pour manipuler les fichiers
+
 
 const UNAUTHORIZED = 'Non autorisé';
 const SAUCE_NOT_FOUND = 'Sauce non trouvée';
 const INTERNAL_SERVER_ERROR = 'Erreur interne du serveur';
+// /////////////////////////////////////////////////////////////////////////////////
+// req = Cet objet représente la requête HTTP entrante. Il contient toutes les informations concernant la requête, y compris les paramètres, les en-têtes, le corps de la requête, etc.
+// res = Cet objet représente la réponse HTTP que le serveur enverra au client. Vous pouvez utiliser cet objet pour envoyer une réponse au client,
+// en définissant par exemple le statut HTTP, les en-têtes et le corps de la réponse.
+// next = C'est une fonction de rappel qui indique à Express de passer à la prochaine fonction middleware dans la pile. Si votre fonction de gestionnaire (handler) ne termine pas la requête-réponse,
+// vous devez appeler next() pour passer le contrôle au prochain gestionnaire. Sinon, la requête restera en suspens.
+// /////////////////////////////////////////////////////////////////////////////////
 
 exports.createSauce = (req, res, next) => {
+  // Destructure les données de la requête
     const {
     name,
     manufacturer,
     description,
     mainPepper,
     heat} = JSON.parse(req.body.sauce)
+
+    // /////////////////////////////////////////////////////////////////////////////////
+    // L'expression req.file est souvent utilisée dans les applications Node.js qui utilisent le middleware multer pour gérer le téléchargement de fichiers.
+    //  multer est un middleware pour la gestion des multipart/form-data, qui sont principalement utilisées pour le téléchargement de fichiers.
+    // Lorsque le client envoie un fichier dans une requête HTTP, multer ajoute un objet file à l'objet de requête req.
+    //  Cet objet contient des informations sur le fichier téléchargé, telles que le nom du fichier, le type MIME (Extensions multifonctions du courrier Internet), la taille du fichier, etc.
+    // le "?" de req.file ? correspond à un if else
+    // Crée l'URL de l'image à partir de la requête
+     // /////////////////////////////////////////////////////////////////////////////////
+
     const imageUrl = req.file ? `${req.protocol}://${req.get('host')}/images/${req.file.filename}` : null;
 
+    // Instancie un nouvel objet "Sauce" avec les données
     const sauce = new Sauce({
         name, manufacturer, description, mainPepper, heat,
         userId: req.auth.userId,
         imageUrl: imageUrl
     });
 
+    // Sauvegarde la nouvelle sauce dans la base de données
     sauce.save()
     .then(() => res.status(201).json({ sauce }))
     .catch(error => res.status(400).json({ error }));
 };
-  
+// /////////////////////////////////////////////////////////////////////////////////
+// req.params.id =
+// req: c'est l'objet de requête HTTP qui contient toutes les informations sur la requête entrante du client. 
+// params: C'est un objet contenant les valeurs des paramètres de l'URL, nommés avec la syntaxe :nom dans la route. Par exemple, dans une route définie comme /sauces/:id, id est un paramètre que vous pouvez accéder via req.params.id.
+// id: C'est le paramètre spécifique que nous extrayons de req.params. Il représente l'ID du document que nous voulons trouver dans la base de données.
+//\_id = Dans MongoDB, chaque document a un champ unique appelé \_id qui sert de clé primaire. Ce champ est automatiquement généré.
+// /////////////////////////////////////////////////////////////////////////////////
+
 exports.modifySauce = (req, res, next) => {
+  // Trouve la sauce en utilisant l'ID passé en paramètre
     Sauce.findOne({ _id: req.params.id })
       .then(sauce => {
         if (!sauce) {
@@ -34,7 +63,7 @@ exports.modifySauce = (req, res, next) => {
         if (sauce.userId !== req.auth.userId) {
           return res.status(401).json({ message: UNAUTHORIZED });
         }
-  
+        // Met à jour les données de la sauce
         const sauceObject = req.file ?
         {
           ...JSON.parse(req.body.sauce),
@@ -48,6 +77,7 @@ exports.modifySauce = (req, res, next) => {
   };
   
 
+   // Supprime le fichier image associé à la sauce
   exports.deleteSauce = (req, res, next) => {
     Sauce.findOne({ _id: req.params.id })
       .then(sauce => {
@@ -70,7 +100,7 @@ exports.modifySauce = (req, res, next) => {
   
 
 
-// Afficher une seule sauce avec son ID
+// Utilise async/await pour récupérer une sauce par son ID
 exports.getOneSauce = async (req, res, next) => {
     try {
       const sauce = await Sauce.findOne({ _id: req.params.id });
@@ -93,7 +123,7 @@ exports.getOneSauce = async (req, res, next) => {
     }
   };
   
-  // Évaluer une sauce
+// Utilise async/await pour évaluer une sauce (like, dislike, ou annuler)
   exports.evaluateSauce = async (req, res, next) => {
     try {
       const sauce = await Sauce.findOne({ _id: req.params.id });
